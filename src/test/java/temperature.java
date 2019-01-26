@@ -6,12 +6,11 @@
  */
 
 import java.io.IOException;
-import java.util.Iterator;
-import java.util.StringTokenizer;
+
+import org.apache.log4j.Logger;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.DoubleWritable;
-import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
@@ -21,7 +20,6 @@ import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
-import org.apache.hadoop.util.GenericOptionsParser;
 import org.apache.log4j.BasicConfigurator;
 
 /**
@@ -35,6 +33,7 @@ import org.apache.log4j.BasicConfigurator;
 
 public class temperature {
 
+    private static final Logger logger = Logger.getLogger(tsp.class.getName());
     public static void main(String[] args) throws Exception {
         BasicConfigurator.configure();
         if (args == null || args.length < 2) {
@@ -46,6 +45,7 @@ public class temperature {
         Path outputPath = new Path(args[1]);
 
         Configuration conf = new Configuration();
+        conf.set("test","WWDxscds");
         String jobName = temperature.class.getSimpleName();
         Job job = Job.getInstance(conf, jobName);
         //设置job运行的jar
@@ -58,7 +58,7 @@ public class temperature {
         job.setMapOutputKeyClass(Text.class);
         job.setMapOutputValueClass(DoubleWritable.class);
         //设置整个程序的输出
-        // outputpath.getFileSystem(conf).delete(outputpath, true);//如果当前输出目录存在，删除之，以避免.FileAlreadyExistsException
+        outputPath.getFileSystem(conf).delete(outputPath, true);//如果当前输出目录存在，删除之，以避免.FileAlreadyExistsException
         FileOutputFormat.setOutputPath(job, outputPath);
         job.setOutputFormatClass(TextOutputFormat.class);
         //设置reducer
@@ -75,6 +75,8 @@ public class temperature {
     public static class WeatherMapper extends Mapper<LongWritable, Text, Text, DoubleWritable> {
         @Override
         protected void map(LongWritable k1, Text v1, Context context) throws IOException, InterruptedException {
+            Configuration conf = context.getConfiguration();
+            logger.info(conf.get("test")+"================================================");
             String line = v1.toString();
             Double max = null;
             Double min = null;
@@ -97,6 +99,7 @@ public class temperature {
         @Override
         protected void reduce(Text k2, Iterable<DoubleWritable> v2s, Context context) throws IOException, InterruptedException {
             // 先预定义最大和最小气温值
+
             double max = Double.MIN_VALUE;
             double min = Double.MAX_VALUE;
             // 得到迭代列表中的气温最大值和最小值
