@@ -6,36 +6,39 @@
  */
 import java.io.*;
 import java.util.*;
+import java.net.URI;
 
+
+import org.apache.hadoop.fs.FSDataInputStream;
+import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.io.*;
-import org.apache.log4j.Logger;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
-import org.apache.log4j.BasicConfigurator;
 
 public class tsp {
-    private static final Logger logger = Logger.getLogger(tsp.class.getName());
 
 
     public static void main(String[] args) throws Exception {
-        BasicConfigurator.configure();//Log4j是一个功能强大的日志组件,提供方便的日志记录，默认配置
-
+        Configuration conf = new Configuration();
         int index = 0;
 
         // 写距离矩阵
         int[] x;
         int[] y;
         String strbuff;
-        BufferedReader data = new BufferedReader(new InputStreamReader(
-                new FileInputStream("src/TSP/citys.txt")));
+        String citysFile = "/TSP/citys.txt";
+        FileSystem fs1 = FileSystem.get(URI.create(citysFile),conf);
+        FSDataInputStream fsr1 = fs1.open(new Path(citysFile));
+        BufferedReader data = new BufferedReader(new InputStreamReader(fsr1));
+
         int cityNum = Integer.parseInt(data.readLine());
         List<IntWritable> list = new LinkedList<IntWritable>();
-        List<FloatWritable> phe = new LinkedList<FloatWritable>();
         IntWritable [][] distanceWritable = new IntWritable[cityNum][cityNum];
 
 
@@ -50,6 +53,7 @@ public class tsp {
             y[i] = Integer.valueOf(strcol[2]);// y坐标
         }
         data.close();
+        fs1.close();
         // 计算距离矩阵
         // 针对具体问题，距离计算方法也不一样，此处用的是att48作为案例，它有48个城市，距离计算方法为伪欧氏距离，最优值为10628
         for (int i = 0; i < cityNum - 1; i++) {
@@ -75,7 +79,16 @@ public class tsp {
 
 
         distanceWritable[cityNum-1][cityNum-1]=new IntWritable(0);
-        BufferedWriter pheW=new BufferedWriter(new OutputStreamWriter(new FileOutputStream("src/TSP/Pheromone.txt")));
+        Path PheromoneFile = new Path("/TSP/Pheromone.txt");
+        FileSystem fs2 = FileSystem.get(conf);
+        if(fs2.exists(PheromoneFile)){
+            fs2.delete(PheromoneFile,true);
+        }
+        FSDataOutputStream fso2 = fs2.create(PheromoneFile);
+
+
+
+        BufferedWriter pheW=new BufferedWriter(new OutputStreamWriter(fso2));
         for (int i=0;i<cityNum;i++) {
             for (int j = 0; j < cityNum; j++) {
                 list.add(distanceWritable[i][j]);
@@ -84,25 +97,30 @@ public class tsp {
             pheW.write("\n");
         }
         pheW.close();
+        fs2.close();
 
 
-        BufferedReader ACOargs = new BufferedReader(new InputStreamReader(new FileInputStream("src/TSP/ACOargs.txt")));
+        FileSystem fs3 = FileSystem.get(URI.create("/TSP/ACOargs.txt"),conf);
+        FSDataInputStream fsr3 = fs3.open(new Path("/TSP/ACOargs.txt"));
+
+        BufferedReader ACOargs = new BufferedReader(new InputStreamReader(fsr3));
         int N = Integer.parseInt(ACOargs.readLine());
         float a = Float.parseFloat(ACOargs.readLine());
         float b = Float.parseFloat(ACOargs.readLine());
         float r = Float.parseFloat(ACOargs.readLine());
         ACOargs.close();
+        fs3.close();
 
 
-        Path inputPath = new Path("src/TSP/antGroups.txt");
+        Path inputPath = new Path("/TSP/firstGroup.txt");
 
 
-        Configuration conf = new Configuration();
+
         while (index<N){  //N 次迭代
             if(index!=0){
-                inputPath = new Path("src/TSP/output"+(index-1)+"/part-r-00000");
+                inputPath = new Path("/TSP/output"+(index-1)+"/part-r-00000");
             }
-            Path outputPath = new Path("src/TSP/output"+index);
+            Path outputPath = new Path("/TSP/output"+index);
 
             conf.setInt("cityNum", cityNum);
             conf.setFloat("alpha", a);

@@ -1,9 +1,13 @@
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FSDataInputStream;
+import org.apache.hadoop.fs.FSDataOutputStream;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Reducer;
-import org.apache.log4j.Logger;
 
 import java.io.*;
+import java.net.URI;
 
 /**
  * @author jiaxuehui
@@ -16,7 +20,6 @@ public class ACOReducer extends Reducer<Text, Text, Text, Text> {
     private float rho;
     private float[][] phe;
 
-    private static final Logger logger = Logger.getLogger(tsp.class.getName());
 
     protected void reduce(Text k2, Iterable<Text> v2s, Context context) throws IOException, InterruptedException {
         Configuration conf = context.getConfiguration();
@@ -25,7 +28,9 @@ public class ACOReducer extends Reducer<Text, Text, Text, Text> {
         rho = conf.getFloat("rho", 0.0f);
 
         phe = new float[cityNum][cityNum];
-        BufferedReader pheR = new BufferedReader(new InputStreamReader(new FileInputStream("src/TSP/Pheromone.txt")));
+        FileSystem fs = FileSystem.get(URI.create("/TSP/Pheromone.txt"),conf);
+        FSDataInputStream fsr = fs.open(new Path("/TSP/Pheromone.txt"));
+        BufferedReader pheR = new BufferedReader(new InputStreamReader(fsr));
         String[] line;
         for (int i=0 ; i<cityNum; i++){
             line = pheR.readLine().split(" ");
@@ -51,8 +56,14 @@ public class ACOReducer extends Reducer<Text, Text, Text, Text> {
             phe[Integer.parseInt(path[j+1])][Integer.parseInt(path[j])]=phe[Integer.parseInt(path[j+1])][Integer.parseInt(path[j])]+(float)(1./bestL);
         }
 
+        Path PheromoneFile = new Path("/TSP/Pheromone.txt");
+        FileSystem fs2 = FileSystem.get(conf);
+        if(fs2.exists(PheromoneFile)){
+            fs2.delete(PheromoneFile,true);
+        }
+        FSDataOutputStream fso2 = fs2.create(PheromoneFile);
 
-        BufferedWriter results=new BufferedWriter(new FileWriter("src/TSP/Pheromone.txt"));
+        BufferedWriter results=new BufferedWriter(new OutputStreamWriter(fso2));
         for (int i=0 ; i<cityNum; i++){
             for (int j=0; j<cityNum; j++){
                 results.write(phe[i][j]+" ");

@@ -1,12 +1,15 @@
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.DefaultStringifier;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Mapper;
-import org.apache.log4j.Logger;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.FSDataInputStream;
 
 import java.io.*;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -19,7 +22,6 @@ import java.util.Random;
  */
 
 public class ACOMapper extends Mapper<LongWritable, Text, Text, Text> {
-    private static final Logger logger = Logger.getLogger(tsp.class.getName());
 
     private int cityNum;
     private IntWritable[][] distance;
@@ -103,7 +105,9 @@ public class ACOMapper extends Mapper<LongWritable, Text, Text, Text> {
         rho = conf.getFloat("rho", 0.0f);
         distance = new IntWritable[cityNum][cityNum];
         pheromone = new float[cityNum][cityNum];
-        BufferedReader pheR = new BufferedReader(new InputStreamReader(new FileInputStream("src/TSP/Pheromone.txt")));
+        FileSystem fs = FileSystem.get(URI.create("/TSP/Pheromone.txt"),conf);
+        FSDataInputStream fsr = fs.open(new Path("/TSP/Pheromone.txt"));
+        BufferedReader pheR = new BufferedReader(new InputStreamReader(fsr));
         String[] line;
         for (int i=0 ; i<cityNum; i++){
             line = pheR.readLine().split(" ");
@@ -183,18 +187,6 @@ public class ACOMapper extends Mapper<LongWritable, Text, Text, Text> {
             {
                 res = bestPath+"|"+bestLength;
             }
-        }
-        //写信息素文件和距离文件和蚂蚁家族文件
-        try
-        {
-            BufferedWriter results=new BufferedWriter(new FileWriter("src/TSP/res.txt",true));
-
-            results.write(bestLength+"\n");
-            results.close();
-        } catch (IOException e)
-        {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
         }
 
         context.write(new Text(res), new Text(""));
